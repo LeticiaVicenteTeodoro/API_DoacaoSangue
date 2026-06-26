@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
-
 from datetime import datetime
+
 
 class CampanhaBase(BaseModel):
     titulo: str
@@ -26,7 +26,8 @@ class CampanhaResponse(CampanhaBase):
 
     class Config:
         from_attributes = True
-        
+
+
 class EstoqueBase(BaseModel):
     hemocentro_id: int
     tipo_sanguineo: str
@@ -49,6 +50,7 @@ class EstoqueResponse(EstoqueBase):
     class Config:
         from_attributes = True
 
+
 class HemocentroBase(BaseModel):
     nome: str
     estado: str
@@ -69,6 +71,28 @@ class HemocentroUpdate(HemocentroBase):
 
 
 class HemocentroResponse(HemocentroBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class FonteDadosBase(BaseModel):
+    nome: str
+    url: str
+    estado: Optional[str] = None
+    descricao: Optional[str] = None
+
+
+class FonteDadosCreate(FonteDadosBase):
+    pass
+
+
+class FonteDadosUpdate(FonteDadosBase):
+    pass
+
+
+class FonteDadosResponse(FonteDadosBase):
     id: int
 
     class Config:

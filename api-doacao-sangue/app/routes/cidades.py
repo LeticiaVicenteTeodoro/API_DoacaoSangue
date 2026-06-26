@@ -1,4 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models import Hemocentro
 
 router = APIRouter(
     prefix="/cidades",
@@ -7,35 +11,31 @@ router = APIRouter(
 
 
 @router.get("/")
-def listar_cidades():
-    conn = conectar()
-    cur = conn.cursor()
+def listar_cidades(db: Session = Depends(get_db)):
+    cidades = db.query(
+        Hemocentro.estado,
+        Hemocentro.cidade
+    ).distinct().all()
 
-    cur.execute("""
-    SELECT DISTINCT cidade, estado
-    FROM hemocentros
-    ORDER BY estado, cidade
-    """)
-
-    dados = cur.fetchall()
-    conn.close()
-
-    return [dict(item) for item in dados]
+    return [
+        {
+            "estado": estado,
+            "cidade": cidade
+        }
+        for estado, cidade in cidades
+    ]
 
 
 @router.get("/{estado}")
-def listar_cidades_por_estado(estado: str):
-    conn = conectar()
-    cur = conn.cursor()
+def listar_cidades_por_estado(
+    estado: str,
+    db: Session = Depends(get_db)
+):
+    cidades = db.query(Hemocentro.cidade).filter(
+        Hemocentro.estado == estado.upper()
+    ).distinct().all()
 
-    cur.execute("""
-    SELECT DISTINCT cidade, estado
-    FROM hemocentros
-    WHERE estado = ?
-    ORDER BY cidade
-    """, (estado.upper(),))
-
-    dados = cur.fetchall()
-    conn.close()
-
-    return [dict(item) for item in dados]
+    return [
+        cidade[0]
+        for cidade in cidades
+    ]

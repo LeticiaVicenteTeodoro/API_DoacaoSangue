@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 router = APIRouter(
     prefix="/compatibilidade",
@@ -37,7 +37,7 @@ COMPATIBILIDADE = {
     "AB+": {
         "recebe_de": ["O-", "O+", "A-", "A+", "B-", "B+", "AB-", "AB+"],
         "doa_para": ["AB+"]
-    },
+    }
 }
 
 
@@ -46,12 +46,13 @@ def consultar_compatibilidade(tipo: str):
     tipo = tipo.upper()
 
     if tipo not in COMPATIBILIDADE:
-        return {
-            "erro": "Tipo sanguíneo inválido",
-            "tipos_validos": list(COMPATIBILIDADE.keys())
-        }
+        raise HTTPException(
+            status_code=404,
+            detail="Tipo sanguíneo inválido"
+        )
 
     return {
-        "tipo": tipo,
-        **COMPATIBILIDADE[tipo]
+        "tipo_sanguineo": tipo,
+        "recebe_de": COMPATIBILIDADE[tipo]["recebe_de"],
+        "doa_para": COMPATIBILIDADE[tipo]["doa_para"]
     }
