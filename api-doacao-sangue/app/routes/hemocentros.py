@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Query
-from app.database import conectar
 
 router = APIRouter(
     prefix="/hemocentros",

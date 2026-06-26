@@ -1,7 +1,10 @@
 from fastapi import FastAPI
+from app.database import engine
+from app.models import Base
 
 from app.routes import hemocentros, estoques, campanhas, compatibilidade, cidades
-from app.database import criar_tabelas, popular_dados_iniciais
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="API Aberta de Doação de Sangue",
@@ -9,8 +12,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-criar_tabelas()
-popular_dados_iniciais()
 
 app.include_router(hemocentros.router)
 app.include_router(estoques.router)

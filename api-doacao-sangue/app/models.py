@@ -1,6 +1,55 @@
-"""
-Arquivo reservado para modelos ORM no futuro.
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from datetime import datetime
 
-Nesta primeira versão, a API usa sqlite3 diretamente para simplificar.
-Quando quiser evoluir, você pode migrar para SQLAlchemy aqui.
-"""
+
+class Base(DeclarativeBase):
+    pass
+
+
+class Hemocentro(Base):
+    __tablename__ = "hemocentros"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String, nullable=False)
+    estado = Column(String, nullable=False)
+    cidade = Column(String, nullable=False)
+    endereco = Column(String)
+    telefone = Column(String)
+    site = Column(String)
+    latitude = Column(Float)
+    longitude = Column(Float)
+
+
+class Estoque(Base):
+    __tablename__ = "estoques"
+
+    id = Column(Integer, primary_key=True, index=True)
+    hemocentro_id = Column(Integer, ForeignKey("hemocentros.id"))
+    tipo_sanguineo = Column(String, nullable=False)
+    status = Column(String, nullable=False)
+    fonte = Column(String)
+    ultima_atualizacao = Column(DateTime, default=datetime.now)
+
+
+class Campanha(Base):
+    __tablename__ = "campanhas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    titulo = Column(String, nullable=False)
+    descricao = Column(String)
+    cidade = Column(String)
+    estado = Column(String)
+    data_inicio = Column(String)
+    data_fim = Column(String)
+    fonte = Column(String)
+
+
+class FonteDados(Base):
+    __tablename__ = "fontes_dados"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String, nullable=False)
+    url = Column(String, nullable=False)
+    estado = Column(String)
+    descricao = Column(String)
