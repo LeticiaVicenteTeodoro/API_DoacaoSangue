@@ -1,0 +1,10 @@
+{
+  "exemplo_estoque": {
+    "estado": "MG",
+    "cidade": "Poços de Caldas",
+    "tipo_sanguineo": "O-",
+    "status": "Crítico",
+    "fonte": "Hemominas",
+    "ultima_atualizacao": "2026-02-01"
+  }
+}

@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.env
+
+# Banco local
+banco.db
+*.db
+
+# Sistema
+.DS_Store
