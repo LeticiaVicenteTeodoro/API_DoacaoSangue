@@ -1,4 +1,13 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models import Campanha
+from app.schemas import (
+    CampanhaCreate,
+    CampanhaUpdate,
+    CampanhaResponse
+)
 
 router = APIRouter(
     prefix="/campanhas",
@@ -6,39 +15,98 @@ router = APIRouter(
 )
 
 
-@router.get("/")
-def listar_campanhas(
-    estado: str | None = Query(default=None),
-    cidade: str | None = Query(default=None)
+@router.post("/", response_model=CampanhaResponse)
+def criar_campanha(
+    dados: CampanhaCreate,
+    db: Session = Depends(get_db)
 ):
-    conn = conectar()
-    cur = conn.cursor()
+    campanha = Campanha(**dados.model_dump())
 
-    query = "SELECT * FROM campanhas WHERE 1=1"
-    params = []
+    db.add(campanha)
+    db.commit()
+    db.refresh(campanha)
+
+    return campanha
+
+
+@router.get("/", response_model=list[CampanhaResponse])
+def listar_campanhas(
+    estado: str | None = None,
+    cidade: str | None = None,
+    db: Session = Depends(get_db)
+):
+    consulta = db.query(Campanha)
 
     if estado:
-        query += " AND estado = ?"
-        params.append(estado.upper())
+        consulta = consulta.filter(Campanha.estado == estado)
 
     if cidade:
-        query += " AND cidade LIKE ?"
-        params.append(f"%{cidade}%")
+        consulta = consulta.filter(Campanha.cidade == cidade)
 
-    cur.execute(query, params)
-    dados = cur.fetchall()
-    conn.close()
-
-    return [dict(item) for item in dados]
+    return consulta.all()
 
 
-@router.get("/ativas")
-def listar_campanhas_ativas():
-    conn = conectar()
-    cur = conn.cursor()
+@router.get("/ativas", response_model=list[CampanhaResponse])
+def campanhas_ativas(
+    db: Session = Depends(get_db)
+):
+    return db.query(Campanha).filter(
+        Campanha.ativa == True
+    ).all()
 
-    cur.execute("SELECT * FROM campanhas")
-    dados = cur.fetchall()
-    conn.close()
 
-    return [dict(item) for item in dados]
+@router.get("/{campanha_id}", response_model=CampanhaResponse)
+def buscar_campanha(
+    campanha_id: int,
+    db: Session = Depends(get_db)
+):
+    campanha = db.query(Campanha).filter(
+        Campanha.id == campanha_id
+    ).first()
+
+    if not campanha:
+        raise HTTPException(404, "Campanha não encontrada")
+
+    return campanha
+
+
+@router.put("/{campanha_id}", response_model=CampanhaResponse)
+def atualizar_campanha(
+    campanha_id: int,
+    dados: CampanhaUpdate,
+    db: Session = Depends(get_db)
+):
+    campanha = db.query(Campanha).filter(
+        Campanha.id == campanha_id
+    ).first()
+
+    if not campanha:
+        raise HTTPException(404, "Campanha não encontrada")
+
+    for campo, valor in dados.model_dump().items():
+        setattr(campanha, campo, valor)
+
+    db.commit()
+    db.refresh(campanha)
+
+    return campanha
+
+
+@router.delete("/{campanha_id}")
+def deletar_campanha(
+    campanha_id: int,
+    db: Session = Depends(get_db)
+):
+    campanha = db.query(Campanha).filter(
+        Campanha.id == campanha_id
+    ).first()
+
+    if not campanha:
+        raise HTTPException(404, "Campanha não encontrada")
+
+    db.delete(campanha)
+    db.commit()
+
+    return {
+        "mensagem": "Campanha removida com sucesso"
+    }

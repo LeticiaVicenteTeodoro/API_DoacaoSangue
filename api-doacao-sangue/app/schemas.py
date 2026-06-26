@@ -3,7 +3,30 @@ from typing import Optional
 
 from datetime import datetime
 
+class CampanhaBase(BaseModel):
+    titulo: str
+    descricao: Optional[str] = None
+    estado: str
+    cidade: str
+    data_inicio: datetime
+    data_fim: datetime
+    ativa: bool = True
 
+
+class CampanhaCreate(CampanhaBase):
+    pass
+
+
+class CampanhaUpdate(CampanhaBase):
+    pass
+
+
+class CampanhaResponse(CampanhaBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+        
 class EstoqueBase(BaseModel):
     hemocentro_id: int
     tipo_sanguineo: str

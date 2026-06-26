@@ -1,5 +1,13 @@
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Float,
+    ForeignKey,
+    DateTime,
+    Boolean,
+)
 from datetime import datetime
 
 
@@ -38,11 +46,11 @@ class Campanha(Base):
     id = Column(Integer, primary_key=True, index=True)
     titulo = Column(String, nullable=False)
     descricao = Column(String)
-    cidade = Column(String)
-    estado = Column(String)
-    data_inicio = Column(String)
-    data_fim = Column(String)
-    fonte = Column(String)
+    estado = Column(String, nullable=False)
+    cidade = Column(String, nullable=False)
+    data_inicio = Column(DateTime)
+    data_fim = Column(DateTime)
+    ativa = Column(Boolean, default=True)
 
 
 class FonteDados(Base):
