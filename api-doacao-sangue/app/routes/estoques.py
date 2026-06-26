@@ -1,4 +1,13 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models import Estoque, Hemocentro
+from app.schemas import (
+    EstoqueCreate,
+    EstoqueUpdate,
+    EstoqueResponse,
+)
 
 router = APIRouter(
     prefix="/estoques",
@@ -6,45 +15,121 @@ router = APIRouter(
 )
 
 
-@router.get("/")
-def listar_estoques(
-    estado: str | None = Query(default=None),
-    tipo_sanguineo: str | None = Query(default=None)
+@router.post("/", response_model=EstoqueResponse)
+def criar_estoque(
+    dados: EstoqueCreate,
+    db: Session = Depends(get_db)
 ):
-    conn = conectar()
-    cur = conn.cursor()
+    hemocentro = db.query(Hemocentro).filter(
+        Hemocentro.id == dados.hemocentro_id
+    ).first()
 
-    query = "SELECT * FROM estoques WHERE 1=1"
-    params = []
+    if not hemocentro:
+        raise HTTPException(
+            status_code=404,
+            detail="Hemocentro não encontrado"
+        )
 
-    if estado:
-        query += " AND estado = ?"
-        params.append(estado.upper())
+    novo = Estoque(**dados.model_dump())
+
+    db.add(novo)
+    db.commit()
+    db.refresh(novo)
+
+    return novo
+
+
+@router.get("/", response_model=list[EstoqueResponse])
+def listar_estoques(
+    estado: str | None = None,
+    tipo_sanguineo: str | None = None,
+    db: Session = Depends(get_db)
+):
+    consulta = db.query(Estoque)
 
     if tipo_sanguineo:
-        query += " AND tipo_sanguineo = ?"
-        params.append(tipo_sanguineo.upper())
+        consulta = consulta.filter(
+            Estoque.tipo_sanguineo == tipo_sanguineo
+        )
 
-    cur.execute(query, params)
-    dados = cur.fetchall()
-    conn.close()
+    if estado:
+        consulta = consulta.join(Hemocentro).filter(
+            Hemocentro.estado == estado
+        )
 
-    return [dict(item) for item in dados]
+    return consulta.all()
 
 
-@router.get("/criticos")
-def listar_estoques_criticos():
-    conn = conectar()
-    cur = conn.cursor()
+@router.get("/criticos", response_model=list[EstoqueResponse])
+def listar_estoques_criticos(
+    db: Session = Depends(get_db)
+):
+    return db.query(Estoque).filter(
+        Estoque.status.in_(["Crítico", "Critico", "Alerta"])
+    ).all()
 
-    cur.execute("""
-    SELECT * FROM estoques
-    WHERE lower(status) LIKE '%crítico%'
-       OR lower(status) LIKE '%critico%'
-       OR lower(status) LIKE '%alerta%'
-    """)
 
-    dados = cur.fetchall()
-    conn.close()
+@router.get("/{estoque_id}", response_model=EstoqueResponse)
+def buscar_estoque(
+    estoque_id: int,
+    db: Session = Depends(get_db)
+):
+    estoque = db.query(Estoque).filter(
+        Estoque.id == estoque_id
+    ).first()
 
-    return [dict(item) for item in dados]
+    if not estoque:
+        raise HTTPException(
+            status_code=404,
+            detail="Estoque não encontrado"
+        )
+
+    return estoque
+
+
+@router.put("/{estoque_id}", response_model=EstoqueResponse)
+def atualizar_estoque(
+    estoque_id: int,
+    dados: EstoqueUpdate,
+    db: Session = Depends(get_db)
+):
+    estoque = db.query(Estoque).filter(
+        Estoque.id == estoque_id
+    ).first()
+
+    if not estoque:
+        raise HTTPException(
+            status_code=404,
+            detail="Estoque não encontrado"
+        )
+
+    for campo, valor in dados.model_dump().items():
+        setattr(estoque, campo, valor)
+
+    db.commit()
+    db.refresh(estoque)
+
+    return estoque
+
+
+@router.delete("/{estoque_id}")
+def deletar_estoque(
+    estoque_id: int,
+    db: Session = Depends(get_db)
+):
+    estoque = db.query(Estoque).filter(
+        Estoque.id == estoque_id
+    ).first()
+
+    if not estoque:
+        raise HTTPException(
+            status_code=404,
+            detail="Estoque não encontrado"
+        )
+
+    db.delete(estoque)
+    db.commit()
+
+    return {
+        "mensagem": "Estoque deletado com sucesso"
+    }
