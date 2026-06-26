@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from app.database import engine
 from app.models import Base
 
-from app.routes import hemocentros, estoques, campanhas, compatibilidade, cidades, fontes
+from app.routes import hemocentros, estoques, campanhas, compatibilidade, cidades, fontes, integracoes
 
 Base.metadata.create_all(bind=engine)
 
@@ -13,6 +13,7 @@ app = FastAPI(
 )
 
 app.include_router(fontes.router)
+app.include_router(integracoes.router)
 app.include_router(hemocentros.router)
 app.include_router(estoques.router)
 app.include_router(campanhas.router)
