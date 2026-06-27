@@ -15,6 +15,44 @@ router = APIRouter(
 )
 
 
+@router.get("/nacional")
+def listar_estoque_nacional(
+    db: Session = Depends(get_db)
+):
+
+    resultado = (
+        db.query(
+            Hemocentro.estado,
+            Hemocentro.nome,
+            Estoque.tipo_sanguineo,
+            Estoque.status,
+            Estoque.fonte,
+            Estoque.ultima_atualizacao
+        )
+        .join(
+            Hemocentro,
+            Hemocentro.id == Estoque.hemocentro_id
+        )
+        .order_by(
+            Hemocentro.estado,
+            Estoque.tipo_sanguineo
+        )
+        .all()
+    )
+
+    return [
+        {
+            "estado": item.estado,
+            "hemocentro": item.nome,
+            "tipo_sanguineo": item.tipo_sanguineo,
+            "status": item.status,
+            "fonte": item.fonte,
+            "ultima_atualizacao": item.ultima_atualizacao
+        }
+        for item in resultado
+    ]
+
+    
 @router.post("/", response_model=EstoqueResponse)
 def criar_estoque(
     dados: EstoqueCreate,
