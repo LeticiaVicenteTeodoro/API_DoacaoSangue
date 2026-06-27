@@ -7,6 +7,8 @@ from app.models import Hemocentro, Estoque
 from app.services.hemominas import coletar_estoque_hemominas
 from app.services.hemosc import coletar_estoque_hemosc
 from app.services.hemepar import coletar_estoque_hemepar
+from app.services.hemoes import coletar_estoque_hemoes
+from app.services.hemoce import coletar_estoque_hemoce
 
 router = APIRouter(
     prefix="/integracoes",
@@ -211,6 +213,136 @@ def atualizar_estoque_hemepar(
     return {
         "sucesso": True,
         "fonte": "HEMEPAR",
+        "estoques_coletados": dados,
+        "registros_criados": criados,
+        "registros_atualizados": atualizados
+    }
+
+@router.post("/hemoes/estoques")
+def atualizar_estoque_hemoes(
+    db: Session = Depends(get_db)
+):
+    dados = coletar_estoque_hemoes()
+
+    if not dados:
+        raise HTTPException(
+            status_code=500,
+            detail="Não foi possível coletar dados do HEMOES"
+        )
+
+    hemocentro = db.query(Hemocentro).filter(
+        Hemocentro.nome == "HEMOES",
+        Hemocentro.estado == "ES"
+    ).first()
+
+    if not hemocentro:
+        hemocentro = Hemocentro(
+            nome="HEMOES",
+            estado="ES",
+            cidade="Vitória",
+            site="https://hemoes.es.gov.br/"
+        )
+
+        db.add(hemocentro)
+        db.commit()
+        db.refresh(hemocentro)
+
+    atualizados = 0
+    criados = 0
+
+    for tipo, status in dados.items():
+        estoque = db.query(Estoque).filter(
+            Estoque.hemocentro_id == hemocentro.id,
+            Estoque.tipo_sanguineo == tipo
+        ).first()
+
+        if estoque:
+            estoque.status = status
+            estoque.fonte = "HEMOES"
+            estoque.ultima_atualizacao = datetime.now()
+            atualizados += 1
+        else:
+            novo = Estoque(
+                hemocentro_id=hemocentro.id,
+                tipo_sanguineo=tipo,
+                status=status,
+                fonte="HEMOES",
+                ultima_atualizacao=datetime.now()
+            )
+
+            db.add(novo)
+            criados += 1
+
+    db.commit()
+
+    return {
+        "sucesso": True,
+        "fonte": "HEMOES",
+        "estoques_coletados": dados,
+        "registros_criados": criados,
+        "registros_atualizados": atualizados
+    }
+
+@router.post("/hemoce/estoques")
+def atualizar_estoque_hemoce(
+    db: Session = Depends(get_db)
+):
+    dados = coletar_estoque_hemoce()
+
+    if not dados:
+        raise HTTPException(
+            status_code=500,
+            detail="Não foi possível coletar dados do HEMOCE"
+        )
+
+    hemocentro = db.query(Hemocentro).filter(
+        Hemocentro.nome == "HEMOCE",
+        Hemocentro.estado == "CE"
+    ).first()
+
+    if not hemocentro:
+        hemocentro = Hemocentro(
+            nome="HEMOCE",
+            estado="CE",
+            cidade="Fortaleza",
+            site="https://www.hemoce.ce.gov.br/"
+        )
+
+        db.add(hemocentro)
+        db.commit()
+        db.refresh(hemocentro)
+
+    atualizados = 0
+    criados = 0
+
+    for tipo, status in dados.items():
+        estoque = db.query(Estoque).filter(
+            Estoque.hemocentro_id == hemocentro.id,
+            Estoque.tipo_sanguineo == tipo
+        ).first()
+
+        if estoque:
+            estoque.status = status
+            estoque.fonte = "HEMOCE"
+            estoque.ultima_atualizacao = datetime.now()
+            atualizados += 1
+        else:
+            novo = Estoque(
+                hemocentro_id=hemocentro.id,
+                tipo_sanguineo=tipo,
+                status=status,
+                fonte="HEMOCE",
+                ultima_atualizacao=datetime.now()
+            )
+
+            db.add(novo)
+            criados += 1
+
+    db.commit()
+
+    return {
+        "sucesso": True,
+        "fonte": "HEMOCE",
         "estoques_coletados": dados,
         "registros_criados": criados,
         "registros_atualizados": atualizados
