@@ -51,8 +51,8 @@ def iniciar_scheduler():
     scheduler.add_job(
         executar_atualizacao,
         "cron",
-        hour=13,
-        minute=23,
+        hour=11,
+        minute=0,
         args=["HEMEPAR", atualizar_estoque_hemepar],
     )
 
