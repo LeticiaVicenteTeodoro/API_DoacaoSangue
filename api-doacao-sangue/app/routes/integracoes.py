@@ -5,6 +5,7 @@ from datetime import datetime
 from app.database import get_db
 from app.models import Hemocentro, Estoque
 from app.services.hemominas import coletar_estoque_hemominas
+from app.services.hemosc import coletar_estoque_hemosc
 
 router = APIRouter(
     prefix="/integracoes",
@@ -72,6 +73,71 @@ def atualizar_estoque_hemominas(
     return {
         "sucesso": True,
         "fonte": "Hemominas",
+        "estoques_coletados": dados,
+        "registros_criados": criados,
+        "registros_atualizados": atualizados
+    }
+
+@router.post("/hemosc/estoques")
+def atualizar_estoque_hemosc(
+    db: Session = Depends(get_db)
+):
+    dados = coletar_estoque_hemosc()
+
+    if not dados:
+        raise HTTPException(
+            status_code=500,
+            detail="Não foi possível coletar dados do HEMOSC"
+        )
+
+    hemocentro = db.query(Hemocentro).filter(
+        Hemocentro.nome == "HEMOSC",
+        Hemocentro.estado == "SC"
+    ).first()
+
+    if not hemocentro:
+        hemocentro = Hemocentro(
+            nome="HEMOSC",
+            estado="SC",
+            cidade="Florianópolis",
+            site="https://www.hemosc.org.br"
+        )
+
+        db.add(hemocentro)
+        db.commit()
+        db.refresh(hemocentro)
+
+    atualizados = 0
+    criados = 0
+
+    for tipo, status in dados.items():
+        estoque = db.query(Estoque).filter(
+            Estoque.hemocentro_id == hemocentro.id,
+            Estoque.tipo_sanguineo == tipo
+        ).first()
+
+        if estoque:
+            estoque.status = status
+            estoque.fonte = "HEMOSC"
+            estoque.ultima_atualizacao = datetime.now()
+            atualizados += 1
+        else:
+            novo = Estoque(
+                hemocentro_id=hemocentro.id,
+                tipo_sanguineo=tipo,
+                status=status,
+                fonte="HEMOSC",
+                ultima_atualizacao=datetime.now()
+            )
+
+            db.add(novo)
+            criados += 1
+
+    db.commit()
+
+    return {
+        "sucesso": True,
+        "fonte": "HEMOSC",
         "estoques_coletados": dados,
         "registros_criados": criados,
         "registros_atualizados": atualizados
