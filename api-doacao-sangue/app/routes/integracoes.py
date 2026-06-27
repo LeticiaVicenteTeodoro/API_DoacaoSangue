@@ -11,6 +11,7 @@ from app.services.hemoes import coletar_estoque_hemoes
 from app.services.hemoce import coletar_estoque_hemoce
 from app.services.hemopa import coletar_estoque_hemopa
 from app.services.hemoba import coletar_estoque_hemoba
+from app.services.hemosul import coletar_estoque_hemosul
 
 router = APIRouter(
     prefix="/integracoes",
@@ -475,6 +476,71 @@ def atualizar_estoque_hemoba(
     return {
         "sucesso": True,
         "fonte": "HEMOBA",
+        "estoques_coletados": dados,
+        "registros_criados": criados,
+        "registros_atualizados": atualizados
+    }
+
+@router.post("/hemosul/estoques")
+def atualizar_estoque_hemosul(
+    db: Session = Depends(get_db)
+):
+    dados = coletar_estoque_hemosul()
+
+    if not dados:
+        raise HTTPException(
+            status_code=500,
+            detail="Não foi possível coletar dados do HEMOSUL"
+        )
+
+    hemocentro = db.query(Hemocentro).filter(
+        Hemocentro.nome == "HEMOSUL",
+        Hemocentro.estado == "MS"
+    ).first()
+
+    if not hemocentro:
+        hemocentro = Hemocentro(
+            nome="HEMOSUL",
+            estado="MS",
+            cidade="Campo Grande",
+            site="https://www.hemosul.ms.gov.br/"
+        )
+
+        db.add(hemocentro)
+        db.commit()
+        db.refresh(hemocentro)
+
+    atualizados = 0
+    criados = 0
+
+    for tipo, status in dados.items():
+        estoque = db.query(Estoque).filter(
+            Estoque.hemocentro_id == hemocentro.id,
+            Estoque.tipo_sanguineo == tipo
+        ).first()
+
+        if estoque:
+            estoque.status = status
+            estoque.fonte = "HEMOSUL"
+            estoque.ultima_atualizacao = datetime.now()
+            atualizados += 1
+        else:
+            novo = Estoque(
+                hemocentro_id=hemocentro.id,
+                tipo_sanguineo=tipo,
+                status=status,
+                fonte="HEMOSUL",
+                ultima_atualizacao=datetime.now()
+            )
+
+            db.add(novo)
+            criados += 1
+
+    db.commit()
+
+    return {
+        "sucesso": True,
+        "fonte": "HEMOSUL",
         "estoques_coletados": dados,
         "registros_criados": criados,
         "registros_atualizados": atualizados
