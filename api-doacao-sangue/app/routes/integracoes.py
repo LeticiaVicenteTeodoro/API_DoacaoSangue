@@ -9,6 +9,7 @@ from app.services.hemosc import coletar_estoque_hemosc
 from app.services.hemepar import coletar_estoque_hemepar
 from app.services.hemoes import coletar_estoque_hemoes
 from app.services.hemoce import coletar_estoque_hemoce
+from app.services.hemopa import coletar_estoque_hemopa
 
 router = APIRouter(
     prefix="/integracoes",
@@ -343,6 +344,71 @@ def atualizar_estoque_hemoce(
     return {
         "sucesso": True,
         "fonte": "HEMOCE",
+        "estoques_coletados": dados,
+        "registros_criados": criados,
+        "registros_atualizados": atualizados
+    }
+
+@router.post("/hemopa/estoques")
+def atualizar_estoque_hemopa(
+    db: Session = Depends(get_db)
+):
+    dados = coletar_estoque_hemopa()
+
+    if not dados:
+        raise HTTPException(
+            status_code=500,
+            detail="Não foi possível coletar dados do HEMOPA"
+        )
+
+    hemocentro = db.query(Hemocentro).filter(
+        Hemocentro.nome == "HEMOPA",
+        Hemocentro.estado == "PA"
+    ).first()
+
+    if not hemocentro:
+        hemocentro = Hemocentro(
+            nome="HEMOPA",
+            estado="PA",
+            cidade="Belém",
+            site="https://www.hemopa.pa.gov.br/"
+        )
+
+        db.add(hemocentro)
+        db.commit()
+        db.refresh(hemocentro)
+
+    atualizados = 0
+    criados = 0
+
+    for tipo, status in dados.items():
+        estoque = db.query(Estoque).filter(
+            Estoque.hemocentro_id == hemocentro.id,
+            Estoque.tipo_sanguineo == tipo
+        ).first()
+
+        if estoque:
+            estoque.status = status
+            estoque.fonte = "HEMOPA"
+            estoque.ultima_atualizacao = datetime.now()
+            atualizados += 1
+        else:
+            novo = Estoque(
+                hemocentro_id=hemocentro.id,
+                tipo_sanguineo=tipo,
+                status=status,
+                fonte="HEMOPA",
+                ultima_atualizacao=datetime.now()
+            )
+
+            db.add(novo)
+            criados += 1
+
+    db.commit()
+
+    return {
+        "sucesso": True,
+        "fonte": "HEMOPA",
         "estoques_coletados": dados,
         "registros_criados": criados,
         "registros_atualizados": atualizados
